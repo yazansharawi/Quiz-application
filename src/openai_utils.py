@@ -2,9 +2,11 @@ from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.chains import LLMChain
 import openai
+import json
 import streamlit as st
 
 def get_quiz_data(text, num_questions, openai_api_key):
+    print("num_questions", num_questions)
     template = f"""
     You are a helpful assistant programmed to generate questions based on any text provided. For every chunk of text you receive, you're tasked with designing {num_questions} distinct questions. Each of these questions will be accompanied by 4 possible answers: one correct answer and three incorrect ones.
     For clarity and ease of processing, structure your response in a way that emulates a Python list of lists. 
@@ -42,12 +44,22 @@ def get_quiz_data(text, num_questions, openai_api_key):
 
         if not generated_text.strip():
             st.warning("Warning: The generated text is empty.")
-        else:
-            print("all good")
+            return []
 
-        lines = generated_text.strip().split('\n')
-        questions = [lines[i:i+5] for i in range(0, len(lines), 5)]
+        try:
+            lines = generated_text.strip().split('\n')
+            questions_data = [json.loads(line) for line in lines]
+        except json.JSONDecodeError as e:
+            st.error(f"Error decoding JSON: {str(e)}")
+            return []
 
+        questions = []
+        for question in questions_data:
+            questions.append(question)
+            if len(questions) >= num_questions:
+                break
+
+        print("questions:", questions)
         return questions
 
     except openai.error.OpenAIError as e:
