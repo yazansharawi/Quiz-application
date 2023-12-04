@@ -20,7 +20,7 @@ with st.expander("How to use?"):
 with st.form("user_input"):
     TOPIC_TEXT = st.text_input("Enter the Topic:", placeholder="football, streamlit, etc...")
     NUMBER_OF_QUESTIONS = st.text_input("Enter the number of questions:", placeholder="1")
-    submitted = st.form_submit_button("Let's start!")
+    submitted = st.form_submit_button("Let's start!",type="primary")
 
 if submitted or ('quiz_data_list' in st.session_state):
     if not TOPIC_TEXT:
