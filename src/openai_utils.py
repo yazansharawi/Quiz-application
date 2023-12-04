@@ -3,6 +3,7 @@ from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTempla
 from langchain.chains import LLMChain
 import openai
 import streamlit as st
+import json
 
 def get_quiz_data(text, num_questions, openai_api_key):
     template = f"""
@@ -20,8 +21,8 @@ def get_quiz_data(text, num_questions, openai_api_key):
 
     Your output should mirror this structure:
     [
-        ["Generated Question 1", "Correct Answer 1", "Incorrect Answer 1.1", "Incorrect Answer 1.2"],
-        ["Generated Question 2", "Correct Answer 2", "Incorrect Answer 2.1", "Incorrect Answer 2.2"],
+        ["Generated Question 1", "Correct Answer 1", "Incorrect Answer 1.1", "Incorrect Answer 1.2","Incorrect Answer 1.3"],
+        ["Generated Question 2", "Correct Answer 2", "Incorrect Answer 2.1", "Incorrect Answer 2.2","Incorrect Answer 2.3"],
         ...
     ]
 
@@ -39,7 +40,6 @@ def get_quiz_data(text, num_questions, openai_api_key):
             prompt=chat_prompt,
         )
         generated_text = chain.run(text)
-
         if not generated_text.strip():
             st.warning("Warning: The generated text is empty.")
             return []
@@ -48,14 +48,12 @@ def get_quiz_data(text, num_questions, openai_api_key):
             questions_data = parse_quiz_text(generated_text.strip())
         except ValueError as e:
             st.error(f"Error parsing list: {str(e)}")
-            return []
-  
+            return []  
         questions = []
         for question in questions_data:
             questions.append(question)
             if len(questions) >= num_questions:
                 break
-
         return questions
 
     except openai.error.OpenAIError as e:
@@ -70,21 +68,39 @@ def get_quiz_data(text, num_questions, openai_api_key):
             st.stop()
 
 def parse_quiz_text(generated_text):
-    lines = generated_text.split('\n')
-    questions = []
-    current_question = []
-    for line in lines:
-        if line.strip().endswith('?'):
-            if current_question:
-                questions.append(current_question)
-                current_question = []
-            current_question.append(line.strip())
-        elif line.strip().startswith('-'):
-            option = line.strip()[2:]
-            current_question.append(option)
-    if current_question: 
-        questions.append(current_question)
-    return questions
+    try:
+        questions_data = json.loads(generated_text)
+        if all(isinstance(item, list) and len(item) >= 2 for item in questions_data):
+            return questions_data
+        else:
+            print("JSON format is incorrect.")
+    except json.JSONDecodeError:
+        lines = generated_text.split('\n')
+        questions = []
+        current_question = None
+        current_answers = []
+
+        for line in lines:
+            line = line.strip()
+            if line.endswith('?'):
+                if current_question:
+                    questions.append([current_question] + current_answers)
+                current_question = line
+                current_answers = []
+            elif line.startswith('-'):
+                answer = line[2:].strip()
+                current_answers.append(answer)
+
+        if current_question and current_answers:
+            questions.append([current_question] + current_answers)
+
+        if questions:
+            return questions
+        else:
+            st.error("No data about this topic")
+
+    return []
+
 
 
 
