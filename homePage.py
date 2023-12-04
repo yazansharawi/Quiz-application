@@ -10,6 +10,7 @@ openai_api_key = os.getenv("OPENAI_TOKEN")
 
 
 
+
 st.title("Hello There! 👋")
 st.subheader("Welcome to who will win the dollar quiz 🎉")
 st.text("")
@@ -37,8 +38,8 @@ if submitted or ('quiz_data_list' in st.session_state):
     with st.spinner("Your quiz is under the making...🫵"):
         if submitted:
             st.session_state.randomized_options = [] 
-            st.write("Debug: Cleared randomized options")
-            quiz_data = get_quiz_data(TOPIC_TEXT, int(NUMBER_OF_QUESTIONS),openai_api_key)
+            print("Debug: Cleared randomized options")
+            quiz_data = get_quiz_data(TOPIC_TEXT, int(NUMBER_OF_QUESTIONS), openai_api_key)
             st.session_state.quiz_data_list = quiz_data
 
             st.session_state.user_answers = []
@@ -52,7 +53,6 @@ if submitted or ('quiz_data_list' in st.session_state):
                 options, correct_answer = get_randomized_options(opt[1:])
                 st.session_state.randomized_options.append(options)
                 st.session_state.correct_answers.append(correct_answer)
-                st.write("Debug: Updated Options for Question", opt[0], options)
 
         with st.form(key='quiz_form'):
             st.subheader("Test Your Knowledge!", anchor=False)

@@ -39,7 +39,6 @@ def get_quiz_data(text, num_questions, openai_api_key):
             prompt=chat_prompt,
         )
         generated_text = chain.run(text)
-        print("generated_text", generated_text)
 
         if not generated_text.strip():
             st.warning("Warning: The generated text is empty.")
@@ -80,9 +79,12 @@ def parse_quiz_text(generated_text):
                 questions.append(current_question)
                 current_question = []
             current_question.append(line.strip())
-        elif line.strip() and line.strip()[0].isalpha() and ')' in line:
-            answer = line.split(')')[1].strip()
-            current_question.append(answer)
-    if current_question:
+        elif line.strip().startswith('-'):
+            option = line.strip()[2:]
+            current_question.append(option)
+    if current_question: 
         questions.append(current_question)
     return questions
+
+
+
