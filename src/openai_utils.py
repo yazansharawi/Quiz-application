@@ -2,11 +2,9 @@ from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 from langchain.chains import LLMChain
 import openai
-import json
 import streamlit as st
 
 def get_quiz_data(text, num_questions, openai_api_key):
-    print("num_questions", num_questions)
     template = f"""
     You are a helpful assistant programmed to generate questions based on any text provided. For every chunk of text you receive, you're tasked with designing {num_questions} distinct questions. Each of these questions will be accompanied by 4 possible answers: one correct answer and three incorrect ones.
     For clarity and ease of processing, structure your response in a way that emulates a Python list of lists. 
@@ -41,25 +39,24 @@ def get_quiz_data(text, num_questions, openai_api_key):
             prompt=chat_prompt,
         )
         generated_text = chain.run(text)
+        print("generated_text", generated_text)
 
         if not generated_text.strip():
             st.warning("Warning: The generated text is empty.")
             return []
 
         try:
-            lines = generated_text.strip().split('\n')
-            questions_data = [json.loads(line) for line in lines]
-        except json.JSONDecodeError as e:
-            st.error(f"Error decoding JSON: {str(e)}")
+            questions_data = parse_quiz_text(generated_text.strip())
+        except ValueError as e:
+            st.error(f"Error parsing list: {str(e)}")
             return []
-
+  
         questions = []
         for question in questions_data:
             questions.append(question)
             if len(questions) >= num_questions:
                 break
 
-        print("questions:", questions)
         return questions
 
     except openai.error.OpenAIError as e:
@@ -72,3 +69,20 @@ def get_quiz_data(text, num_questions, openai_api_key):
         else:
             st.error(f"An unexpected error occurred: {str(e)}")
             st.stop()
+
+def parse_quiz_text(generated_text):
+    lines = generated_text.split('\n')
+    questions = []
+    current_question = []
+    for line in lines:
+        if line.strip().endswith('?'):
+            if current_question:
+                questions.append(current_question)
+                current_question = []
+            current_question.append(line.strip())
+        elif line.strip() and line.strip()[0].isalpha() and ')' in line:
+            answer = line.split(')')[1].strip()
+            current_question.append(answer)
+    if current_question:
+        questions.append(current_question)
+    return questions

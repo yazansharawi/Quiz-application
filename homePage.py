@@ -1,6 +1,14 @@
 import streamlit as st
 from src.openai_utils import get_quiz_data
 from src.quiz_utils import get_randomized_options
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+openai_api_key = os.getenv("OPENAI_TOKEN")
+
+
 
 st.title("Hello There! 👋")
 st.subheader("Welcome to who will win the dollar quiz 🎉")
@@ -26,12 +34,13 @@ if submitted or ('quiz_data_list' in st.session_state):
         st.info("Please provide the number of questions")
         st.stop()
 
-    with st.spinner("Your quiz is under the making...🤓"):
+    with st.spinner("Your quiz is under the making...🫵"):
         if submitted:
-            quiz_data = get_quiz_data(TOPIC_TEXT, int(NUMBER_OF_QUESTIONS), "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")
+            st.session_state.randomized_options = [] 
+            st.write("Debug: Cleared randomized options")
+            quiz_data = get_quiz_data(TOPIC_TEXT, int(NUMBER_OF_QUESTIONS),openai_api_key)
             st.session_state.quiz_data_list = quiz_data
 
-            # Clear the user_answers list before updating it
             st.session_state.user_answers = []
 
             if 'correct_answers' not in st.session_state:
@@ -39,10 +48,11 @@ if submitted or ('quiz_data_list' in st.session_state):
             if 'randomized_options' not in st.session_state:
                 st.session_state.randomized_options = []
 
-            for q in st.session_state.quiz_data_list:
-                options, correct_answer = get_randomized_options(q[1:])
+            for opt in st.session_state.quiz_data_list:
+                options, correct_answer = get_randomized_options(opt[1:])
                 st.session_state.randomized_options.append(options)
                 st.session_state.correct_answers.append(correct_answer)
+                st.write("Debug: Updated Options for Question", opt[0], options)
 
         with st.form(key='quiz_form'):
             st.subheader("Test Your Knowledge!", anchor=False)
@@ -56,9 +66,20 @@ if submitted or ('quiz_data_list' in st.session_state):
             results_submitted = st.form_submit_button(label='Unveil My Score!')
 
             if results_submitted:
-                score = sum([ua == st.session_state.randomized_options[i].index(ca) for i, (ua, ca) in
-                             enumerate(zip(st.session_state.user_answers, st.session_state.correct_answers))])
-                st.success(f"Your score: {score}/{len(st.session_state.quiz_data_list)}")
+                score = 0
+                num_questions = len(st.session_state.quiz_data_list)
+                for i in range(num_questions):
+                    if i < len(st.session_state.randomized_options):
+                        ua = st.session_state.user_answers[i] if i < len(st.session_state.user_answers) else None
+                        ca = st.session_state.correct_answers[i] if i < len(st.session_state.correct_answers) else None
+                        if ua is not None and 0 <= ua < len(st.session_state.randomized_options[i]):
+                            if st.session_state.randomized_options[i][ua] == st.session_state.quiz_data_list[i][1]:
+                                score += 1
+                        else:
+                            pass
+                    else:
+                        pass
+                st.success(f"Your score: **{score}/{len(st.session_state.quiz_data_list)}**")
 
                 if score == len(st.session_state.quiz_data_list):
                     st.balloons()
@@ -67,13 +88,16 @@ if submitted or ('quiz_data_list' in st.session_state):
                     if incorrect_count == 1:
                         st.warning(f"Almost perfect! You got 1 question wrong. Let's review it:")
                     else:
-                        st.warning(f"Almost there! You got {incorrect_count} questions wrong. Let's review them:")
+                        st.warning(f"Almost there! You got **{incorrect_count}** questions wrong. Let's review them:")
 
                 for i, (ua, ca, q, ro) in enumerate(
                         zip(st.session_state.user_answers, st.session_state.correct_answers,
                             st.session_state.quiz_data_list, st.session_state.randomized_options)):
-                    with st.expander(f"Question {i + 1}", expanded=False):
+                    with st.expander(f"Question **{i + 1}**", expanded=False):
                         if ro[ua] != ca:
-                            st.info(f"Question: {q[0]}")
-                            st.error(f"Your answer: {ro[ua]}")
-                            st.success(f"Correct answer: {ca}")
+                            st.info(f"Question: **{q[0]}**")
+                            if ro[ua] != ca:
+                                st.error(f"Your answer: **{ro[ua]}**")
+                            else:
+                                st.success(f"Your answer: **{ro[ua]}**")    
+                            st.success(f"Correct answer is option: **{ca}**")
